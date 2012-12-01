@@ -2,19 +2,34 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using SignalR;
-using SignalR.Hubs;
+using Microsoft.AspNet.SignalR;
+using Microsoft.AspNet.SignalR.Hubs;
+using System.Web.Mvc;
+using System.Web.Routing;
+using System.Web;
+using System.Web.Http;
 
 namespace SignalR.Relay
 {
     public class Global : System.Web.HttpApplication
     {
+
         protected void Application_Start(object sender, EventArgs e)
         {
             var dynamicProvider = new RelayDescriptorProvider();
             GlobalHost.DependencyResolver.Register(typeof(IHubDescriptorProvider), () => dynamicProvider);
             var methodProvier = new RelayMethodDescriptorProvider();
             GlobalHost.DependencyResolver.Register(typeof(IMethodDescriptorProvider), () => methodProvier);
+
+            RouteTable.Routes.MapHubs();
+        }
+    }
+
+    public class AuthAttribute : Attribute, IAuthorizeHubMethodInvocation
+    {
+        public bool AuthorizeHubMethodInvocation(IHubIncomingInvokerContext hubIncomingInvokerContext)
+        {
+            return true;
         }
     }
 
@@ -32,11 +47,12 @@ namespace SignalR.Relay
                 Hub = hub,
                 Invoker = (h, args) =>
                 {
-                    IClientProxy proxy = h.Clients;
+                    IClientProxy proxy = h.Clients.All;
                     return proxy.Invoke(method, args);
                 },
                 Name = method,
-                Parameters = Enumerable.Range(0, parameters.Length).Select(i => new ParameterDescriptor { Name = "p_" + i, Type = typeof(object) }).ToArray(),
+                Attributes = new List<AuthAttribute>() { new AuthAttribute() },
+                Parameters = Enumerable.Range(0, parameters.Length).Select(i => new Microsoft.AspNet.SignalR.Hubs.ParameterDescriptor { Name = "p_" + i, Type = typeof(object) }).ToArray(),
                 ReturnType = typeof(Task)
             };
 
@@ -65,23 +81,10 @@ namespace SignalR.Relay
             descriptor = new HubDescriptor { Name = hubName, Type = typeof(RelayHub) };
             return true;
         }
+    }
 
-        private class RelayHub : Hub, IConnected, IDisconnect
-        {
-            public Task Connect()
-            {
-                return null;
-            }
+    public class RelayHub : Hub
+    {
 
-            public Task Reconnect(IEnumerable<string> groups)
-            {
-                return null;
-            }
-
-            public Task Disconnect()
-            {
-                return null;
-            }
-        }
     }
 }

@@ -9,6 +9,8 @@
             var connection = $.hubConnection(),
                 chat = connection.createProxy('chat');
 
+            connection.logging = true;
+
             chat.on('foo', function (n) {
                 console.log(n);
             });
